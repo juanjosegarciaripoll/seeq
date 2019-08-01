@@ -7,7 +7,9 @@ Quantum Mechanics
 
 It is a collection of Jupyter notebooks that use literary programming Python
 implementation of traditional and modern algorithms in Quantum Mechanics and
-Quantum Optics.Matrix-Product-State algorithms. These include:
+Quantum Optics. For a related effort on Matrix Product States go to [https://github.com/juanjosegarciaripoll/seemps](SeeMPS).
+
+The algorithms currently in SeeQ are:
 
 * A pythonesque interface to evolve a quantum state with constant or
   time-dependent Hamiltonians.
@@ -32,9 +34,16 @@ of the algorithms, the basic code, examples and tests. You can open the
 notebooks and execute them. Each of them is self-contained, although it may rely
 on other components of the library.
 
-The library itself lives in the `seeq/` directory. It consists of various
-modules and functions. The library is built from the Jupyter notebooks using
-`make all`.
+The library can also be used as a standalone Python module, stored in the `seeq/`
+directory. It consists of various submodules and functions that can be imported
+as `import seeq`, `import seeq.evolution`, etc.
+
+If you change the notebooks, the module `seeq/` must also be rebuilt. This is
+done using `make all` at the toplevel directory.
+
+To rebuild the library you must have a copy of my `exportnb.py` utility together
+with the `Makefile`. This utility is available from the
+[https://github.com/juanjosegarciaripoll/seemps](exportnb) repository.
 
 Version: 0.0
 
