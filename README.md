@@ -27,6 +27,10 @@ The library is entirely developed in Python 3 using Numpy and Scipy, and a
 standard Jupyter environment. We recommend using Anaconda3 or Miniconda3,
 although any other distribution of Python should suffice.
 
+To rebuild the library you must have a copy of my `exportnb.py` utility together
+with the `Makefile`. This utility is available from the
+[exportnb](https://github.com/juanjosegarciaripoll/exportnb) repository.
+
 ## Usage
 
 The library is explained in the self-contained notebooks with brief explanations
@@ -40,10 +44,6 @@ as `import seeq`, `import seeq.evolution`, etc.
 
 If you change the notebooks, the module `seeq/` must also be rebuilt. This is
 done using `make all` at the toplevel directory.
-
-To rebuild the library you must have a copy of my `exportnb.py` utility together
-with the `Makefile`. This utility is available from the
-[exportnb](https://github.com/juanjosegarciaripoll/exportnb) repository.
 
 Version: 0.0
 
