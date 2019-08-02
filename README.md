@@ -43,7 +43,8 @@ directory. It consists of various submodules and functions that can be imported
 as `import seeq`, `import seeq.evolution`, etc.
 
 If you change the notebooks, the module `seeq/` must also be rebuilt. This is
-done using `make all` at the toplevel directory.
+done using `make all` at the toplevel directory. This works both in Windows as
+well as in Linux (in this case you may need to have `make` installed).
 
 Version: 0.0
 
