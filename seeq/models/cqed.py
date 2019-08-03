@@ -23,7 +23,10 @@ class Transmons(LinearOperator):
 
     def __init__(self, nqubits, Ec=1/95., EJ=1., g=0, ng=0, nmax=8, format='csr'):
         self.nqubits = nqubits
-
+        self.Ec = Ec = Ec * np.ones(nqubits)
+        self.ng = ng = ng * np.ones(nqubits)
+        self.EJ = EJ = EJ * np.ones(nqubits)
+        assert len(Ec) == len(ng) == len(EJ) == nqubits
         # Dimensions of one-qubit problem
         dim = 2*nmax+1
         # Dimension of operators and states for the full problem
@@ -53,15 +56,12 @@ class Transmons(LinearOperator):
         self.nmax = nmax
         #
         # Capacitive energy
-        self.Ec = Ec = Ec * np.ones(nqubits)
-        self.ng = ng = ng * np.ones(nqubits)
         Id = sp.eye(fulldim)
         self.Hcap = sum((4.0*Ec) * (N-ng*Id)**2
                         for ng, Ec, N in zip(ng, self.Ec, self.N))
         #
         # Inductive energy
-        self.EJ = EJ = EJ * np.ones(nqubits)
-        self.HJJ = [EJ * qubit_operator((Sup+Sdo)/2., j, nqubits)
+        self.HJJ = [qubit_operator((Sup+Sdo)/2., j, nqubits)
                      for j, EJ in enumerate(self.EJ)]
         #
         # The interaction must be symmetric
@@ -126,3 +126,8 @@ class Transmons(LinearOperator):
             ti = Transmons(nqubits=1, Ec=self.Ec[i], nmax=self.nmax)
             _, basis = ti.eigenstates(2, EJ=self.EJ[i])
         return basis
+    
+    def frequencies(self, n=1):
+        """Return gaps between states 1, 2, ... n and the ground state"""
+        λ = lowest_eigenvalues(self, neig=n+1)
+        return tuple(λ)
