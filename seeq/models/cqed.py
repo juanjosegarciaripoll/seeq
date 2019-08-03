@@ -2,6 +2,7 @@ import numpy as np
 import scipy.sparse as sp
 from scipy.sparse.linalg import LinearOperator
 from seeq.tools import lowest_eigenstates, lowest_eigenvalues
+import copy
 
 class Transmons(LinearOperator):
     
@@ -62,47 +63,46 @@ class Transmons(LinearOperator):
         #
         # Inductive energy
         self.HJJ = [qubit_operator((Sup+Sdo)/2., j, nqubits)
-                     for j, EJ in enumerate(self.EJ)]
+                    for j, EJ in enumerate(self.EJ)]
         #
         # The interaction must be symmetric
         g = g * np.ones((nqubits, nqubits))
-        self.g = g = (g + g.T)/2.0
-        self.Hint = sum((2.0 * g[i,j]) * (self.N[i] * self.N[j])
-                         for i in range(self.nqubits)
-                         for j in range(i)
-                         if g[i,j])
+        self.g = (g + g.T)/2.0
 
-    def _normalize_EJ(self, EJ):
-        return self.EJ if EJ is None else EJ * np.ones(self.nqubits)
-
-    def hamiltonian(self, EJ=None, gfactor=1.):
-        """Return the Hamiltonian of this set of transmons, possibly
-        changing the Josephson energies or rescaling the couplings.
-        
-        Arguments:
-        ----------
-        EJ      -- A scalar or a vector of Josephson energies, or
-                   None if we use the default values.
-        gfactor -- Multiplicative factor on the interaction term.
-        """
-        EJ = self._normalize_EJ(EJ)
-        return sum((-EJ) * hi for EJ, hi in zip(EJ,self.HJJ)) + \
-                self.Hcap + gfactor * self.Hint
-
-    def apply(self, ψ, EJ=None, gfactor=1.):
+    def hamiltonian(self):
+        """Return the Hamiltonian of this set of transmons."""
+        return self.Hcap + \
+            sum((-EJ) * hi for EJ, hi in zip(self.EJ,self.HJJ)) + \
+            sum((2*self.g[i,j]) * (self.N[i] @ (self.N[j] @ ψ))
+                     for i in range(self.nqubits)
+                     for j in range(i)
+                     if self.g[i,j])
+            
+    def apply(self, ψ):
         """Act with the Hamiltonian of this set of transmons, onto
-        the state ψ. Arguments are the same as for hamiltonian().
-        """
-        EJ = self._normalize_EJ(EJ)
-        out = self.Hcap @ ψ - sum(EJi * (hi @ ψ) for EJi, hi in zip(EJ,self.HJJ))
-        if gfactor and self.Hint is not 0:
-            out += gfactor * (self.Hint @ ψ)
-        return out
+        the state ψ."""
+        g = self.g
+        N = self.N
+        return self.Hcap @ ψ \
+            - sum(EJi * (hi @ ψ) for EJi, hi in zip(self.EJ,self.HJJ)) \
+            + sum((2*g[i,j]) * (N[i] @ (N[j] @ ψ))
+                       for i in range(self.nqubits)
+                       for j in range(i)
+                       if g[i,j])
 
     def _matvec(self, A):
         return self.apply(A)
 
-    def qubit_basis(self, EJ=None, which=None):
+    def tune(self, EJ=None, g=None):
+        """Return a new Transmon with tuned parameters."""
+        out = copy.copy(self)
+        if EJ is not None:
+            out.EJ = EJ
+        if g is not None:
+            out.g = g
+        return out
+
+    def qubit_basis(self, which=None):
         """Return the computational basis for the transmons in the limit
         of no coupling.
         
@@ -110,14 +110,12 @@ class Transmons(LinearOperator):
         ----------
         which -- If None, return all 2**nqubits eigenstates. If it is
                  an index, return the eigenstates for the n-th qubit.
-        EJ    -- Josephson energy (or None, for the default values)
         
         Returns:
         --------
         ψ     -- Matrix with columns for the computational basis states.
         """
         nqubits = self.nqubits
-        EJ = self._normalize_EJ(EJ)
         if which is None:
             basis = 1
             for i in range(nqubits):
@@ -130,4 +128,4 @@ class Transmons(LinearOperator):
     def frequencies(self, n=1):
         """Return gaps between states 1, 2, ... n and the ground state"""
         λ = lowest_eigenvalues(self, neig=n+1)
-        return tuple(λ)
+        return tuple(λ[1:]-λ[0])
