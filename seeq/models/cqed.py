@@ -93,13 +93,17 @@ class Transmons(LinearOperator):
     def _matvec(self, A):
         return self.apply(A)
 
+    def _matmat(self, A):
+        return self.apply(A)
+
     def tune(self, EJ=None, g=None):
         """Return a new Transmon with tuned parameters."""
         out = copy.copy(self)
         if EJ is not None:
-            out.EJ = EJ
+            out.EJ = EJ * np.ones(self.nqubits)
         if g is not None:
-            out.g = g
+            g = g * np.ones((self.nqubits,self.nqubits))
+            out.g = 0.5 * (g + g.T)
         return out
 
     def qubit_basis(self, which=None):
@@ -119,13 +123,14 @@ class Transmons(LinearOperator):
         if which is None:
             basis = 1
             for i in range(nqubits):
-                basis = np.kron(basis, self.qubit_basis(ϵ, i))
+                basis = np.kron(basis, self.qubit_basis(i))
         else:
-            ti = Transmons(nqubits=1, Ec=self.Ec[i], nmax=self.nmax)
-            _, basis = ti.eigenstates(2, EJ=self.EJ[i])
+            ti = Transmons(nqubits=1, Ec=self.Ec[which],
+                           EJ=self.EJ[which], nmax=self.nmax)
+            _, basis = lowest_eigenstates(ti, 2)
         return basis
     
     def frequencies(self, n=1):
         """Return gaps between states 1, 2, ... n and the ground state"""
         λ = lowest_eigenvalues(self, neig=n+1)
-        return tuple(λ[1:]-λ[0])
+        return tuple(λ[1:]-λ[0]) if n > 1 else λ[1]-λ[0]
