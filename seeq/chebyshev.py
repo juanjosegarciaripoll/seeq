@@ -44,8 +44,7 @@ class ChebyshevExpm:
             self.largestEig = largestEig
             self.smallestEig = -largestEig
         else:
-            self.Hnorm = abs(sla.eigsh(self.H, k=1, which='LM',
-                                       return_eigenvectors=0)[0])
+            self.Hnorm = abs(sla.eigsh(H, k=1, which='LM', return_eigenvectors=0)[0])
             self.largestEig = self.Hnorm
             self.smallestEig = - self.Hnorm
     
