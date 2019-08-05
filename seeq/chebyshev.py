@@ -14,14 +14,13 @@ class ChebyshevExpm:
     it to $exp(-i*A*R)*v$ where B has eigenvalues in [-1,1] and
     R is a real number.
     
-    H     -- a matrix, or a linear function f(v) on vectors
-    d     -- matrix size, only needs to be provided when H is a function
-    order -- the order of the Chebyshev approximation
-    dt    -- time interval in the exponential above
-    rtol  -- relative tolerance for deciding when to stop the
-             Chebyshev expansion
+    Parameters
+    ----------
+    H         -- A matrix or a LinearOperator() with shape (d,d)
+    d         -- matrix size, only needs to be provided when H is a function
+    bandwidth -- An upper bound on the spectral bandwidth of A
     """
-    def __init__(self, H, d=None, largestEig=0):
+    def __init__(self, H, d=None, bandwidth=None):
         #
         # H can be a function, a matrix, a sparse matrix, etc. We construct
         # a linear operator in all cases, which is a general abstraction that
@@ -40,23 +39,29 @@ class ChebyshevExpm:
         # computing small values. We thus use a trick of computing the
         # largest magnitude X and assume the spectrum is in [-X,X]
         #
-        if largestEig:
-            self.largestEig = largestEig
-            self.smallestEig = -largestEig
-        else:
-            self.Hnorm = abs(sla.eigsh(H, k=1, which='LM', return_eigenvectors=0)[0])
-            self.largestEig = self.Hnorm
-            self.smallestEig = - self.Hnorm
-    
+        if bandwidth is None:
+            Hnorm = abs(sla.eigsh(H, k=1, which='LM', return_eigenvectors=0)[0])
+            bandwidth = 2*Hnorm
+        self.bandwidth = bandwidth
+
     @staticmethod
     def weights(order, rm):
         ndx = np.arange(0,order)
         return jn(ndx, rm) * ((-1j)**ndx)
                     
     def apply(self, v, order=100, dt=1.0, tol=1e-14):
-        
-        rp = dt * (self.largestEig + self.smallestEig) / 2
-        rm = dt * (self.largestEig - self.smallestEig) / 2
+        """Apply the Chebyshev approximation of the exponential exp(1i*dt*A)
+        onto the vector or matrix `v`.        
+        Parameters
+        ----------
+        v     -- A vector or a matrix
+        order -- the order of the Chebyshev approximation
+        dt    -- time interval in the exponential above
+        tol   -- relative tolerance for deciding when to stop the
+                 Chebyshev expansion
+        """
+        rp = dt * self.bandwidth / 2
+        rm = dt * self.bandwidth / 2
         order = max(order, 2 * int(rm))
         
         # Apply a version of A that is shifted and rescaled 
@@ -93,6 +98,26 @@ class ChebyshevExpm:
 
         return cheb * np.exp(-1j*rp)
     
-def expm(A, v, **kwargs):
-    aux = ChebyshevExpm(A)
+def expm(A, v, d=None, bandwidth=None, **kwargs):
+    """Apply the Chebyshev approximation of the exponential exp(1i*dt*A)
+    onto the vector or matrix `v`.
+    
+    Parameters
+    ----------
+    A         -- A matrix or a LinearOperator() with shape (d,d), or
+                 a linear function that acts on vectors.
+    v         -- A vector or a matrix with shapes (d,) or (d,M)
+    d         -- Dimension of matrix A. Only required when A is
+                 a function or callable object
+    bandwidth -- An upper bound on the spectral bandwidth of A
+    order     -- the order of the Chebyshev approximation
+    dt        -- time interval in the exponential above
+    tol       -- relative tolerance for deciding when to stop the
+                 Chebyshev expansion
+
+    Returns
+    -------
+    newv      -- A vector or a matrix approximating expm(1j*dt*A) @ v
+    """
+    aux = ChebyshevExpm(A, d=d, bandwidth=bandwidth)
     return aux.apply(v, **kwargs)
