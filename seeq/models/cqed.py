@@ -73,7 +73,7 @@ class Transmons(LinearOperator):
         """Return the Hamiltonian of this set of transmons."""
         return self.Hcap + \
             sum((-EJ) * hi for EJ, hi in zip(self.EJ,self.HJJ)) + \
-            sum((2*self.g[i,j]) * (self.N[i] @ (self.N[j] @ ψ))
+            sum((2*self.g[i,j]) * (self.N[i] * self.N[j])
                      for i in range(self.nqubits)
                      for j in range(i)
                      if self.g[i,j])
