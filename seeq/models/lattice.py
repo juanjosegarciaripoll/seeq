@@ -96,10 +96,10 @@ class Regular3DLattice(Lattice):
 
     def coupling_at(self, r, g=1.0):
         """Return vector of couplings at given position."""
-        ndx = ndx_map.get(r, None)
+        ndx = self.ndx_map.get(r, None)
         if ndx is None:
             raise Exception(f'Emitter position {r} is not in the lattice.')
-        gr = np.zeros(self.sizeL)
+        gr = np.zeros(self.size)
         gr[ndx] = g
         return gr
 
