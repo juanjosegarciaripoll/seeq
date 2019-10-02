@@ -50,7 +50,19 @@ If you change the notebooks, the module `seeq/` must also be rebuilt. This is
 done using `make all` at the toplevel directory. This works both in Windows as
 well as in Linux/Mac (in Linux you may need to have `make` installed).
 
-Version: 0.0
+## License
+
+This library is distributed as is, under a liberal license detailed in the file
+`LICENSE`. However, if you use this material for research or educational purposes
+or create derived works, we would like you to give credit to the library by
+referencing the first work that we developed with it:
+
+Adrian Feiguin, Juan José García Ripoll, Alejandro González Tudela,
+"Qubit-Photon Corner States", arXiv
+
+Alternatively, cite this work using its Zenodo reference (to be confirmed).
+
+Version: 0.1
 
 Authors:
 * Juan José García Ripoll (Institute of Fundamental Physics)
