@@ -13,16 +13,13 @@ class LanczosExpm:
         #
         if callable(H) and not isinstance(H, sla.LinearOperator):
             H = sla.LinearOperator((d,d),matvec=H)
-        self.H = H
-        #
-        # Estimate the spectral range of H, computing the smallest and
-        # largest eigenvalues. ARPACK in standard Python is not good at
-        # computing small values. We thus use a trick of computing the
-        # largest magnitude X and assume the spectrum is in [-X,X]
-        #
-        self.Hnorm = abs(sla.eigs(H, k=1, which='LM', return_eigenvectors=0)[0])
+        self.H = H            
     
     def estimateOrder(self, dt=1.0):
+        #
+        # Estimate the order of the Lanczos expansion
+        #
+        self.Hnorm = abs(sla.eigs(H, k=1, which='LM', return_eigenvectors=0)[0])
         return max(int(3*self.Hnorm*dt+1),4)
 
     def apply(self, v, dt=1.0, order=0, tol=1e-14):

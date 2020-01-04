@@ -42,7 +42,13 @@ class ChebyshevExpm:
         if bandwidth is None:
             Hnorm = abs(sla.eigsh(H, k=1, which='LM', return_eigenvectors=0)[0])
             bandwidth = 2*Hnorm
-        self.bandwidth = bandwidth
+        if np.isscalar(bandwidth):
+            self.height = bandwidth/2.0
+            self.center = 0.0
+        else:
+            Emin, Emax = bandwidth
+            self.height = 0.5 * (Emax - Emin)
+            self.center = 0.5 * (Emax + Emin)
 
     @staticmethod
     def weights(order, rm):
@@ -60,8 +66,8 @@ class ChebyshevExpm:
         tol   -- relative tolerance for deciding when to stop the
                  Chebyshev expansion
         """
-        rp = dt * self.bandwidth / 2
-        rm = dt * self.bandwidth / 2
+        rp = dt * self.center
+        rm = dt * self.height
         order = max(order, 2 * int(rm))
         
         # Apply a version of A that is shifted and rescaled 
@@ -109,7 +115,8 @@ def expm(A, v, d=None, bandwidth=None, **kwargs):
     v         -- A vector or a matrix with shapes (d,) or (d,M)
     d         -- Dimension of matrix A. Only required when A is
                  a function or callable object
-    bandwidth -- An upper bound on the spectral bandwidth of A
+    bandwidth -- An upper bound on the spectral bandwidth of A or
+                 a pair (Emin, Emax) of extreme eigenvalues
     order     -- the order of the Chebyshev approximation
     dt        -- time interval in the exponential above
     tol       -- relative tolerance for deciding when to stop the
