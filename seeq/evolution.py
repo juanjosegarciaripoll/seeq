@@ -93,12 +93,12 @@ def ct_chebyshev_gen(H, ψ0, t0, largestEig=0.0, tol=1e-10, order=100):
     U = seeq.chebyshev.ChebyshevExpm(H, d=d, largestEig=largestEig)
     return lambda t, δt, ψ: U.apply(ψ, dt=δt, tol=tol, order=order)
 
-def chebyshev_gen(H, ψ0, t0, largestEig=0.0, tol=1e-10, order=100):
+def chebyshev_gen(H, ψ0, t0, bandwidth=None, tol=1e-10, order=100):
     # Time-dependent Hamiltonian, Chebyshev method
     d = ψ0.shape[0]
     def step(t, δt, ψ):
         U = seeq.chebyshev.ChebyshevExpm(scipy.sparse.linalg.LinearOperator((d,d), matvec=lambda ψ: H(t, ψ)),
-                                         largestEig=largestEig)
+                                         bandwidth=bandwidth)
         return U.apply(ψ, dt=δt, tol=tol, order=order)
     return step
 
@@ -109,6 +109,7 @@ def ct_lanczos_gen(H, ψ0, t0, tol=1e-10, order=100):
 
 def lanczos_gen(H, ψ0, t0, largestEigenvalue=0.0, tol=1e-10, order=100):
     # Time-dependent Hamiltonian, Chebyshev method
+    d = ψ0.shape[0]
     def step(t, δt, ψ):
         U = seeq.lanczos.LanczosExpm(scipy.sparse.linalg.LinearOperator((d,d), matvec=lambda ψ: H(t, ψ)))
         return U.apply(ψ, dt=δt, tol=tol, order=order)
