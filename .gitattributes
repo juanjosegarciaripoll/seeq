@@ -1,5 +1,5 @@
 * text=auto
-*.ipynb text
-*.py text
-*.cmd text
-*.md text
+*.ipynb text=lf
+*.py text=lf
+*.cmd text=lf
+*.md text=lf
