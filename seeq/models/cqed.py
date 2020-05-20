@@ -170,3 +170,42 @@ def fit_qubit(ω01, α, quiet=True, nmax=16, **kwdargs):
         print(f'ω01/2π= {ω01x/(2*π)}')
         print(f'α/2π  = {(ω02x - 2 * ω01x)/(2*π)}')
     return t
+
+def tune_qubit(t, ω01, which=0, quiet=True):
+    """Create a new Transmons object where one of the qubits has a new
+    gap. This tuning is done by changing the Josephson energy of the qubit.
+    
+    Input:
+    t      -- a Transmons object
+    ω01    -- the new gap of one qubit
+    which  -- which qubit is tuned (default=0)
+    quiet  -- if False, print the output of the computation
+    
+    Output:
+    newt   -- a new Transmons object where the properties of one qubit
+              have been tuned.
+    """
+    def budget(x):
+        EJ = t.EJ.copy()
+        EJ[which] = abs(x)
+        newt = t.tune(EJ=np.abs(x))
+        ω01x = newt.frequencies()
+        return ω01x - ω01
+    
+    x0 = ω01**2/(8.*t.Ec)
+    if not quiet:
+        print('Initial:')
+        print(f'Ec        = {t.Ec}')
+        print(f'EJ        = {t.EJ}')
+        print(f'EJ/Ec     = {t.EJ/t.Ec}')
+        print(f'ω01/(2*π) = {t.frequencies()/(2*np.pi)}')
+
+    x = scipy.optimize.root(budget, x0).x
+    EJ = t.EJ.copy()
+    EJ[which] = x
+    newt = t.tune(EJ=EJ)
+    if not quiet:
+        print('Final:')
+        print(f'EJ        = {EJ}')
+        print(f'ω01/(2*π) = {newt.frequencies()/(2*np.pi)}')
+    return newt
