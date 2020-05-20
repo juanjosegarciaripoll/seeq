@@ -1,8 +1,4 @@
 
-import numpy as np
-import scipy.sparse as sp
-from seeq.states import *
-
 from seeq.control import *
 
 import unittest
@@ -18,7 +14,7 @@ class TestQControl(unittest.TestCase):
         """For a qubit to remain the same, we do nothing."""
         Ug = np.eye(2)
         H = lambda t, x, ψ: x * (self.σx @ ψ)
-        r = parametric_control([1.0], H, self.ψ0, Ug, T=1.0, tol=1e-8, method='expm')
+        r = parametric_control([1.0], H, self.ψ0, T=1.0, Ug=Ug, tol=1e-8, method='expm')
         self.assertEqual(len(r.x), 1)
         self.assertAlmostEqual(r.x[0], 0.0, delta=1e-7)
 
@@ -26,7 +22,7 @@ class TestQControl(unittest.TestCase):
         """For a qubit to remain the same, we cancel the frequency."""
         Ug = np.eye(2)
         H = lambda t, x, ψ: x[0] * (self.σx @ ψ) + (1.0 - x[1]) * (self.σz @ ψ)
-        r = parametric_control([1.0, 0.1], H, self.ψ0, Ug, T=1.0, tol=1e-8, method='expm')
+        r = parametric_control([1.0, 0.1], H, self.ψ0, T=1.0, Ug=Ug, tol=1e-8, method='expm')
         self.assertEqual(len(r.x), 2)
         self.assertAlmostEqual(r.x[0], 0.0, delta=1e-7)
         self.assertAlmostEqual(r.x[1], 1.0, delta=1e-7)
@@ -35,7 +31,7 @@ class TestQControl(unittest.TestCase):
         """Construct a π/2 pulse."""
         Ug = -1j*self.σy
         H = lambda t, x, ψ: (x * self.σy) @ ψ
-        r = parametric_control([1.0], H, self.ψ0, Ug, T=1.0, tol=1e-9, method='expm')
+        r = parametric_control([1.0], H, self.ψ0, T=1.0, Ug=Ug, tol=1e-9, method='expm')
         self.assertEqual(len(r.x), 1)
         self.assertAlmostEqual(r.x[0], self.π/2., delta=1e-7)
 
@@ -44,7 +40,7 @@ class TestQControl(unittest.TestCase):
         Ug = np.eye(2)
         H = lambda t, x, ψ: x * (self.σx @ ψ)
         dH = lambda t, x, ψ: [self.σx @ ψ]
-        r = parametric_control([1.0], H, self.ψ0, Ug, T=1.0, dH=dH, tol=1e-8, method='expm')
+        r = parametric_control([1.0], H, self.ψ0, T=1.0, Ug=Ug, dH=dH, tol=1e-8, method='expm')
         self.assertEqual(len(r.x), 1)
         self.assertAlmostEqual(r.x[0], 0.0, delta=1e-7)
 
@@ -53,6 +49,10 @@ class TestQControl(unittest.TestCase):
         Ug = -1j*self.σy
         H = lambda t, x, ψ: (x * self.σy) @ ψ
         dH = lambda t, x, ψ: [self.σy @ ψ]
-        r = parametric_control([1.0], H, self.ψ0, Ug, T=1.0, dH=dH, tol=1e-9, method='expm')
+        r = parametric_control([1.0], H, self.ψ0, T=1.0, Ug=Ug, dH=dH, tol=1e-9, method='expm')
         self.assertEqual(len(r.x), 1)
         self.assertAlmostEqual(r.x[0], self.π/2., delta=1e-7)
+
+import numpy as np
+import scipy.sparse as sp
+from seeq.states import *
