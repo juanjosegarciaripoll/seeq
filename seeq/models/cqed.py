@@ -134,3 +134,39 @@ class Transmons(LinearOperator):
         """Return gaps between states 1, 2, ... n and the ground state"""
         λ = lowest_eigenvalues(self, neig=n+1)
         return tuple(λ[1:]-λ[0]) if n > 1 else λ[1]-λ[0]
+import scipy.optimize
+
+def fit_qubit(ω01, α, quiet=True, nmax=16, **kwdargs):
+    """Compute a Transmons() object that is fitted to have the given
+    gap ω01 and anharmonicity α. Returns a Transmons() object."""
+    def budget(x):
+        t = Transmons(1, Ec=x[0], EJ=x[1], nmax=nmax, **kwdargs)
+        ω01x, ω02x = t.frequencies(2)
+        αx = (ω02x - 2 * ω01x)
+        return [ω01x - ω01, α - αx]
+    
+    if ω01 < 0 or α > 0 or abs(α) > abs(ω01):
+        raise ValueError(f'Invalid transmon properties ω01={ω01}, α={α}')
+
+    αr = α/ω01
+    Ec = np.abs(α)
+    EJ = ω01**2/(8*Ec)
+    if not quiet:
+        print('Estimates:')
+        print(f'Ec    = {Ec}')
+        print(f'EJ    = {EJ}')
+        print(f'EJ/Ec = {1./(8*αr**2)} = {EJ/Ec}')
+
+    x = scipy.optimize.fsolve(budget, [Ec, EJ])
+    t = Transmons(1, Ec=x[0], EJ=x[1], nmax=nmax, **kwdargs)
+    t.α = α
+    t.ωq = ω01
+    ω01x, ω02x = t.frequencies(2)
+    if not quiet:
+        print('Computation:')
+        print(f'Ec    = {x[0]}')
+        print(f'EJ    = {x[1]}')
+        print(f'EJ/Ec = {x[1]/x[0]}')
+        print(f'ω01/2π= {ω01x/(2*π)}')
+        print(f'α/2π  = {(ω02x - 2 * ω01x)/(2*π)}')
+    return t
