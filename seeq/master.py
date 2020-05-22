@@ -24,7 +24,7 @@ class Lindblad(LinearOperator):
             ρ = ρ.reshape(self.ρshape)
         H = self.Hamiltonian
         if callable(H):
-            Lρ = -1j * (H(t, ρ - H(t, ρ.conj().T).conj()))
+            Lρ = -1j * (H(t, ρ) - H(t, ρ.conj().T).conj())
         else:
             Lρ = -1j * (H @ ρ - ρ @ H)
         for (γi, Ai, Bi) in self.dissipators:
