@@ -96,44 +96,73 @@ class Transmons(LinearOperator):
     def _matmat(self, A):
         return self.apply(A)
 
-    def tune(self, EJ=None, g=None):
-        """Return a new Transmon with tuned parameters."""
+    def tune(self, EJ=None, ϵ=None, which=0, g=None):
+        """Return a new Transmon with tuned parameters.
+        
+        Parameters
+        ----------
+        EJ    -- Either a vector with all new Josephson energies, or a scalar
+                 with the Josephson energy of `which` qubit
+        ϵ     -- If supplied, the Josephson energy is perturbed to EJ*(1+ϵ)
+        which -- Qubit onto which EJ or ϵ changes affect.
+        g     -- New interactions.
+        
+        Output
+        ------
+        t     -- A new Transmons object with modified parameters
+        """
         out = copy.copy(self)
-        if EJ is not None:
-            out.EJ = EJ * np.ones(self.nqubits)
+        if ϵ is not None:
+            if np.isscalar(ϵ):
+                out.EJ = out.EJ.copy()
+                out.EJ[which] *= (1+ϵ)
+            else:
+                out.EJ = out.EJ * (1+ϵ)
+        elif EJ is not None:
+            if np.isscalar(EJ):
+                out.EJ = out.EJ.copy()
+                out.EJ[which] = EJ
+            else:
+                out.EJ = EJ
         if g is not None:
             g = g * np.ones((self.nqubits,self.nqubits))
             out.g = 0.5 * (g + g.T)
         return out
 
-    def qubit_basis(self, which=None):
+    def qubit_basis(self, which=None, neigs=2):
         """Return the computational basis for the transmons in the limit
         of no coupling.
         
-        Arguments:
+        Parameters
         ----------
         which -- If None, return all 2**nqubits eigenstates. If it is
                  an index, return the eigenstates for the n-th qubit.
+        neigs -- How many eigestates per qubit (default 2)
         
-        Returns:
-        --------
+        Returns
+        -------
         ψ     -- Matrix with columns for the computational basis states.
         """
         nqubits = self.nqubits
         if which is None:
             basis = 1
             for i in range(nqubits):
-                basis = np.kron(basis, self.qubit_basis(i))
+                basis = np.kron(basis, self.qubit_basis(which=i, neigs=neigs))
         else:
-            ti = Transmons(nqubits=1, Ec=self.Ec[which],
-                           EJ=self.EJ[which], nmax=self.nmax)
-            _, basis = lowest_eigenstates(ti, 2)
+            ti = Transmons(nqubits=1, Ec=self.Ec[which], EJ=self.EJ[which], nmax=self.nmax)
+            _, basis = lowest_eigenstates(ti, neigs)
         return basis
     
     def frequencies(self, n=1):
         """Return gaps between states 1, 2, ... n and the ground state"""
         λ = lowest_eigenvalues(self, neig=n+1)
         return tuple(λ[1:]-λ[0]) if n > 1 else λ[1]-λ[0]
+
+    def bandwidth(self):
+        """Return an upper bound for the bandwidth of this matrix."""
+        Emin = -np.sum(self.EJ)
+        Emax = np.sum(self.Ec)*(4.0*self.nmax**2)-Emin
+        return (Emin,Emax)
 import scipy.optimize
 
 def fit_qubit(ω01, α, quiet=True, nmax=16, **kwdargs):
@@ -167,8 +196,8 @@ def fit_qubit(ω01, α, quiet=True, nmax=16, **kwdargs):
         print(f'Ec    = {x[0]}')
         print(f'EJ    = {x[1]}')
         print(f'EJ/Ec = {x[1]/x[0]}')
-        print(f'ω01/2π= {ω01x/(2*π)}')
-        print(f'α/2π  = {(ω02x - 2 * ω01x)/(2*π)}')
+        print(f'ω01/2π= {ω01x/(2*np.pi)}')
+        print(f'α/2π  = {(ω02x - 2 * ω01x)/(2*np.pi)}')
     return t
 
 def tune_qubit(t, ω01, which=0, quiet=True):
