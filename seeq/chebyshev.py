@@ -40,7 +40,9 @@ class ChebyshevExpm:
         # largest magnitude X and assume the spectrum is in [-X,X]
         #
         if bandwidth is None:
-            Hnorm = abs(sla.eigsh(H, k=1, which='LM', return_eigenvectors=0)[0])
+            λmax = sla.eigs(H, k=1, which='LM', return_eigenvectors=0)[0]
+            print(f'λmax={λmax}')
+            Hnorm = abs(λmax)
             bandwidth = 2*Hnorm
         if np.isscalar(bandwidth):
             self.height = bandwidth/2.0
@@ -72,7 +74,11 @@ class ChebyshevExpm:
         
         # Apply a version of A that is shifted and rescaled 
         def Btimes(phi):
-            return ((self.H @ phi) * (dt/rm) - phi * (rp/rm))
+            #
+            # There's something stupid about LinearOperators that always return
+            # matrices when applied to arrays. This screws our use of vdot()
+            # and other operations below
+            return np.asarray((self.H @ phi) * (dt/rm) - phi * (rp/rm))
     
         # Bessel coefficients ak, plus imaginary parts from chebyshev polynomials    
         ak = self.weights(order, rm)

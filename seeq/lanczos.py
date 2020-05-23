@@ -19,7 +19,7 @@ class LanczosExpm:
         #
         # Estimate the order of the Lanczos expansion
         #
-        self.Hnorm = abs(sla.eigs(H, k=1, which='LM', return_eigenvectors=0)[0])
+        self.Hnorm = abs(sla.eigs(self.H, k=1, which='LM', return_eigenvectors=0)[0])
         return max(int(3*self.Hnorm*dt+1),4)
 
     def apply(self, v, dt=1.0, order=0, tol=1e-14):
@@ -51,7 +51,7 @@ class LanczosExpm:
             # recursion without restart or reorthogonalization.
             #
             for n in range(start, nmax):
-                w = (self.H @ vn)
+                w = numpy.asarray(self.H @ vn)
                 α.append(numpy.vdot(vn, w))
                 w = w - α[n] * vn - β[n] * vnm1
                 vnm1 = vn
@@ -86,7 +86,7 @@ class LanczosExpm:
         vnm1 = vn = v
         output = fHt[0] * vn
         for n in range(1, nmax):
-            w = (self.H @ vn) - α[n-1] * vn - β[n-1] * vnm1
+            w = numpy.asarray(self.H @ vn) - α[n-1] * vn - β[n-1] * vnm1
             vnm1 = vn
             vn = w / β[n]
             output = output + fHt[n] * vn
