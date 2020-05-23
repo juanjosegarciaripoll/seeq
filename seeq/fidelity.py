@@ -46,28 +46,74 @@ def avg_unitary_fidelity(U, W=None):
     if W is not None:
         U = U * W.T.conj()
     d = len(U)
-    Fe = np.abs(np.tr(U)/d)**2
+    Fe = np.abs(np.trace(U)/d)**2
     F = (d*Fe+1)/(d+1)
     return F
 
 def avg_superoperator_fidelity(E):
-    """Return the average fidelity of superoperator E, which can be represented
-    as a matrix of dimension (d^2)*(d^2), or as a four dimensional tensor with
-    indices of size d. In all cases d is the size of the useful Hilbert space."""
+    """Return the average fidelity of superoperator E, represented as a four
+    dimensional tensor with indices of size d, where 'd' is the size of the
+    Hilbert space."""
     if E.ndim == 4:
         d = E.shape[0]
         E = E.reshape(d*d,d*d)
-    elif E.ndim == 2:
-        d = round(np.sqrt(E.shape[0]))
     else:
         raise ValueException('Not a valid representation for a superoperator.')
-    Fe = abs(np.trace(E))
+    Fe = abs(np.trace(E))/(d*d)
     F = (d*Fe+1)/(d+1)
     return F
+
+def avg_fidelity(T):
+    """Return the average fidelity of a transformation T.
+    
+    Arguments
+    ---------
+    T  -- Either a 4 dimensional tensor, representing a positive map, or
+          a 2 dimensional tensor or matrix, representing a unitary operation.
+
+    Output
+    ------
+    F  -- A value in [0,1] representing the average fidelity.
+    """
+    if T.ndim == 2:
+        return avg_unitary_fidelity(T)
+    elif T.ndim == 4:
+        return avg_superoperator_fidelity(T)
+    else:
+        raise ValueException('Not a valid superoperator or matrix.')
 
 def leakage(S):
     """Compute the leakage outside the computational space, for a matrix
     S that connects input and output states in the computational basis,
     and which is in general not unitary."""
-    d = S.shape[0]
-    return np.abs(1 - np.vdot(S, S)/d)
+    if S.ndim == 2:
+        d = S.shape[0]
+        return np.abs(1 - np.vdot(S, S)/d)
+    elif S.ndim == 4:
+        d = S.shape[0]
+        return np.abs(1 - np.einsum('iijj', S)/d)
+    else:
+        raise ValueError('Not a valid unitary or positive map')
+
+def extract_phases(T):
+    """Extract diagonal phases from a unitary operation or superoperator"""
+    if T.ndim == 2:
+        # Unitary operator
+        v = np.diag(T) / T[0,0]
+        v /= np.abs(v)
+        return np.diag(v)
+    elif T.ndim == 4:
+        # Superoperator
+        return extract_phases(T[:,0,:,0])
+    raise ValueError('Not a valid unitary or positive map.')
+
+def remove_phases(T):
+    """Eliminate diagonal phases from a unitary operation or superoperator"""
+    inv = extract_phases(T).conj()
+    if T.ndim == 4:
+        d = inv.shape[0]
+        return np.einsum('ij,kl,jlmn', inv, inv.conj(), T)
+    return inv @ T
+
+def avg_fidelity_no_phases(T):
+    return avg_fidelity(remove_phases(T))
