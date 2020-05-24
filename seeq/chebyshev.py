@@ -4,6 +4,10 @@ import scipy.sparse.linalg
 from scipy.special import jn
 import scipy.linalg as la
 import scipy.sparse.linalg as sla
+import warnings
+
+class AccuracyWarning(Warning):
+    pass
 
 class ChebyshevExpm:
     """
@@ -41,7 +45,6 @@ class ChebyshevExpm:
         #
         if bandwidth is None:
             λmax = sla.eigs(H, k=1, which='LM', return_eigenvectors=0)[0]
-            print(f'λmax={λmax}')
             Hnorm = abs(λmax)
             bandwidth = 2*Hnorm
         if np.isscalar(bandwidth):
@@ -105,8 +108,9 @@ class ChebyshevExpm:
             phi0 = phi1
             phi1 = phi2
         else:
-            print("Desired precision of ", tol, "not reached.")
-            print("Error = ", np.linalg.norm(tmp)/np.linalg.norm(cheb))
+            warnings.warn(f'Desired precision {tol} not reached with {order} steps. '
+                          f'Error is {np.linalg.norm(tmp)/np.linalg.norm(cheb)}',
+                          AccuracyWarning)
 
         return cheb * np.exp(-1j*rp)
     

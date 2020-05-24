@@ -3,8 +3,12 @@ import numpy
 import scipy
 import scipy.linalg as la
 import scipy.sparse.linalg as sla
+import warnings
 
-class LanczosExpm:
+class AccuracyWarning(Warning):
+    pass
+
+class ArnoldiExpm:
     def __init__(self, H, d=0):
         #
         # H can be a function, a matrix, a sparse matrix, etc. We construct
@@ -22,15 +26,92 @@ class LanczosExpm:
         self.Hnorm = abs(sla.eigs(self.H, k=1, which='LM', return_eigenvectors=0)[0])
         return max(int(3*self.Hnorm*dt+1),4)
 
-    def apply(self, v, dt=1.0, order=0, tol=1e-14):
+    def apply(self, v, dt=1.0, order=None, tol=1e-14):
         # This function has two ways to operate: if we provide an order,
         # it applies the Lanczos expansion up to that basis size; otherwise
         # it estimates the number of vectors based on the norm of the matrix
         # that we will exponentiate (which was estimated before in __init__)
-        if order == 0:
-            nmax = self.estimateOrder(dt)
-        else:
-            nmax = order
+        nmax = 12 if order is None else order
+        #
+        # Construct a projected version of the matrix 'H' on the
+        # Krylov subspace generated around vector 'v'
+        #
+        v = numpy.asarray(v)
+        β = numpy.linalg.norm(v)
+        vn = v / β
+        V = []
+        H = scipy.sparse.dok_matrix((v.size,v.size))
+        lasterr = 1.0
+        start = 0
+        while True:
+            for j in range(start,nmax):
+                V.append(vn)
+                w = numpy.asarray(self.H @ vn)
+                for i in range(j):
+                    H[i,j] = hij = numpy.vdot(w, V[i])
+                    w -= hij * V[i]
+                H[j+1,j] = hlast = numpy.linalg.norm(w)
+                if hlast < 1e-20:
+                    break
+                vn = w / hlast
+            #
+            # We diagonalize the banded matrix formed by α and β and
+            # use that to compute the exponential of the effective
+            # truncated matrix. This also allows us to estimate the error
+            # due to the Lanczos method.
+            #
+            Hj = H.copy()
+            Hj.resize((j+1,j+1))
+            e1 = np.zeros(j+1)
+            e1[0] = 1.0
+            y = scipy.sparse.linalg.expm_multiply((-1j*dt)*Hj.tocsr(), e1)
+            err = abs(hlast * y[-1])
+            if err < tol:
+                break
+            if lasterr < err or nmax == v.size or (order is not None):
+                warnings.warn(f'Arnoldi failed to converge at {j+1} iterations with error {err}',
+                              AccuracyWarning)
+                lasterr = err
+                break
+            start = nmax
+            nmax = min(int(1.5*nmax+1), v.size)
+        #
+        # Given the approximation of the exponential, recompute the
+        # Lanczos basis 
+        #
+        return np.array(V).T @ (β * y)
+    
+def expm(A, v, **kwargs):
+    aux = LanczosExpm(A, d=v.size)
+    return aux.apply(v, **kwargs)
+
+
+import numpy
+import scipy
+import scipy.linalg as la
+import scipy.sparse.linalg as sla
+import warnings
+
+class AccuracyWarning(Warning):
+    pass
+
+class LanczosExpm:
+    def __init__(self, H, d=0):
+        #
+        # H can be a function, a matrix, a sparse matrix, etc. We construct
+        # a linear operator in all cases, which is a general abstraction that
+        # numpy can work with and allows multiplication times a vector '@'
+        #
+        if callable(H) and not isinstance(H, sla.LinearOperator):
+            H = sla.LinearOperator((d,d),matvec=H)
+        self.H = H
+
+    def apply(self, v, dt=1.0, order=None, tol=1e-14):
+        # This function has two ways to operate: if we provide an order,
+        # it applies the Lanczos expansion up to that basis size; otherwise
+        # it estimates the number of vectors based on the norm of the matrix
+        # that we will exponentiate (which was estimated before in __init__)
+        nmax = 10 if order is None else order
         if nmax > v.size:
             nmax = v.size
         #
@@ -44,7 +125,7 @@ class LanczosExpm:
         α = []
         β = [0.0]
         start = 0
-        lasterr = 1.0
+        lasterr = vnrm * 1e10
         while True:
             #
             # Iteratively extend the Krylov basis using the lanczos
@@ -72,9 +153,9 @@ class LanczosExpm:
             err = abs(fHt[n]*β[n+1])
             if err < tol:
                 break
-            if lasterr < err or nmax == v.size:
-                print('Lanczos failed to converge at ', len(α), ' iterations')
-                print('err='+str(err))
+            if lasterr < err or nmax == v.size or (order is not None):
+                warnings.warn(f'Lanczos failed to converge at {len(α)} iterations with error {err}',
+                              AccuracyWarning)
                 lasterr = err
                 break
             start = nmax
