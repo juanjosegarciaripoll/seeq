@@ -60,7 +60,7 @@ class ChebyshevExpm:
         ndx = np.arange(0,order)
         return jn(ndx, rm) * ((-1j)**ndx)
                     
-    def apply(self, v, order=100, dt=1.0, tol=1e-14):
+    def apply(self, v, dt=1.0, order=None, maxorder=None, tol=1e-14):
         """Apply the Chebyshev approximation of the exponential exp(1i*dt*A)
         onto the vector or matrix `v`.        
         Parameters
@@ -73,7 +73,8 @@ class ChebyshevExpm:
         """
         rp = dt * self.center
         rm = dt * self.height
-        order = max(order, 2 * int(rm))
+        if order is None:
+            order = max(100, 2*int(rm))
         
         # Apply a version of A that is shifted and rescaled 
         def Btimes(phi):
