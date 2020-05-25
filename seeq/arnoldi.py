@@ -27,6 +27,16 @@ class ArnoldiExpm:
         return max(int(3*self.Hnorm*dt+1),4)
 
     def apply(self, v, dt=1.0, order=None, tol=1e-13):
+        """Apply the Arnodi approximation of the exponential exp(-1i*dt*A)
+        onto the vector or array `v`.        
+        Parameters
+        ----------
+        v     -- A vector or a matrix
+        order -- Maximum number of Arnoldi vectors
+        dt    -- time interval in the exponential above (can be complex)
+        tol   -- relative tolerance for deciding when to stop the
+                 Arnoldi expansion
+        """
         # This function has two ways to operate: if we provide an order,
         # it applies the Lanczos expansion up to that basis size; otherwise
         # it estimates the number of vectors based on the norm of the matrix
@@ -37,6 +47,10 @@ class ArnoldiExpm:
         # Krylov subspace generated around vector 'v'
         #
         v = numpy.asarray(v)
+        shape = v.shape
+        if v.ndim > 1:
+            v = v.flatten()
+            shape = (shape[0],v.size // shape[0])
         β = numpy.linalg.norm(v)
         vn = v / β
         V = []
@@ -46,7 +60,7 @@ class ArnoldiExpm:
         while True:
             for j in range(start,nmax):
                 V.append(vn)
-                w = (-1j*dt)*(self.H @ vn)
+                w = (-1j*dt)*numpy.asarray(self.H @ vn.reshape(shape)).flatten()
                 for (i,Vi) in enumerate(V):
                     H[i,j] = hij = numpy.vdot(Vi, w)
                     w -= hij * Vi
@@ -64,12 +78,12 @@ class ArnoldiExpm:
             #
             Hj = H.copy()
             if True:
+                # Corrected Arnoldi method
                 Hj.resize((j+2,j+2))
                 Hj[j+1,j+1] = 1.0
                 e1 = np.zeros(j+2)
                 e1[0] = 1.0
                 y = scipy.sparse.linalg.expm_multiply(Hj.tocsr(), e1)
-                #y = scipy.linalg.expm(Hj.todense())[:,0]
                 err = abs(hlast * y[-1])
                 y = y[:-1]
             else:
@@ -77,7 +91,6 @@ class ArnoldiExpm:
                 e1 = np.zeros(j+1)
                 e1[0] = 1.0
                 y = scipy.sparse.linalg.expm_multiply(Hj.tocsr(), e1)
-                #y = scipy.linalg.expm(Hj.todense())[:,0]
                 err = abs(hlast * y[-1])
             if err < tol:
                 break
@@ -92,10 +105,10 @@ class ArnoldiExpm:
         # Given the approximation of the exponential, recompute the
         # Lanczos basis 
         #
-        return np.array(V).T @ (β * y)
+        return sum(Vi * (β * yi) for Vi, yi in zip(V, y)).reshape(v.shape)
     
 def expm(A, v, **kwargs):
-    """Apply the Arnoldi approximation of the exponential exp(1i*dt*A)
+    """Apply the Arnoldi approximation of the exponential exp(-1i*dt*A)
     onto the vector or matrix `v`.
     
     Parameters
@@ -106,7 +119,7 @@ def expm(A, v, **kwargs):
     d         -- Dimension of matrix A. Only required when A is
                  a function or callable object
     order     -- maximum order of the Arnoldi approximation
-    dt        -- time interval in the exponential above
+    dt        -- time interval in the exponential above (can be complex)
     tol       -- relative tolerance for deciding when to stop
 
     Returns

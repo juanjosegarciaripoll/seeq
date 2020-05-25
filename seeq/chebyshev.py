@@ -61,7 +61,7 @@ class ChebyshevExpm:
         return jn(ndx, rm) * ((-1j)**ndx)
                     
     def apply(self, v, dt=1.0, order=None, maxorder=None, tol=1e-14):
-        """Apply the Chebyshev approximation of the exponential exp(1i*dt*A)
+        """Apply the Chebyshev approximation of the exponential exp(-1i*dt*A)
         onto the vector or matrix `v`.        
         Parameters
         ----------
@@ -135,7 +135,7 @@ def expm(A, v, d=None, bandwidth=None, **kwargs):
 
     Returns
     -------
-    newv      -- A vector or a matrix approximating expm(1j*dt*A) @ v
+    newv      -- A vector or a matrix approximating expm(-1j*dt*A) @ v
     """
     aux = ChebyshevExpm(A, d=d, bandwidth=bandwidth)
     return aux.apply(v, **kwargs)

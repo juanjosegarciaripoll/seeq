@@ -20,6 +20,16 @@ class LanczosExpm:
         self.H = H
 
     def apply(self, v, dt=1.0, order=None, tol=1e-14):
+        """Apply the Lanczos approximation of the exponential exp(-1i*dt*A)
+        onto the vector `v`.        
+        Parameters
+        ----------
+        v     -- A vector
+        order -- Maximum number of Arnoldi vectors
+        dt    -- time interval in the exponential above (can be complex)
+        tol   -- relative tolerance for deciding when to stop the
+                 Arnoldi expansion
+        """
         # This function has two ways to operate: if we provide an order,
         # it applies the Lanczos expansion up to that basis size; otherwise
         # it estimates the number of vectors based on the norm of the matrix
