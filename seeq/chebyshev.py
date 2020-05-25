@@ -1,5 +1,5 @@
 
-import numpy as np
+import numpy
 import scipy.sparse.linalg
 from scipy.special import jn
 import scipy.linalg as la
@@ -47,7 +47,7 @@ class ChebyshevExpm:
             λmax = sla.eigs(H, k=1, which='LM', return_eigenvectors=0)[0]
             Hnorm = abs(λmax)
             bandwidth = 2*Hnorm
-        if np.isscalar(bandwidth):
+        if numpy.isscalar(bandwidth):
             self.height = bandwidth/2.0
             self.center = 0.0
         else:
@@ -57,7 +57,7 @@ class ChebyshevExpm:
 
     @staticmethod
     def weights(order, rm):
-        ndx = np.arange(0,order)
+        ndx = numpy.arange(0,order)
         return jn(ndx, rm) * ((-1j)**ndx)
                     
     def apply(self, v, dt=1.0, order=None, maxorder=None, tol=1e-14):
@@ -82,7 +82,7 @@ class ChebyshevExpm:
             # There's something stupid about LinearOperators that always return
             # matrices when applied to arrays. This screws our use of vdot()
             # and other operations below
-            return np.asarray((self.H @ phi) * (dt/rm) - phi * (rp/rm))
+            return numpy.asarray((self.H @ phi) * (dt/rm) - phi * (rp/rm))
     
         # Bessel coefficients ak, plus imaginary parts from chebyshev polynomials    
         ak = self.weights(order, rm)
@@ -97,23 +97,23 @@ class ChebyshevExpm:
         # Note the 'vector' 'v' is actually a matrix of vectors with columns
         # corresponding to different states. We want to compute the total
         # norm of the vectors in a speedy way.
-        atol2 = np.abs(tol**2 * np.vdot(v, v))
+        atol2 = numpy.abs(tol**2 * numpy.vdot(v, v))
         
         # Higher orders
         for jj in range(2,order):
             phi2 = 2 * Btimes(phi1) - phi0
             tmp = 2 * ak[jj] * phi2
             cheb += tmp
-            if abs(np.vdot(tmp,tmp)) < atol2:
+            if abs(numpy.vdot(tmp,tmp)) < atol2:
                 break
             phi0 = phi1
             phi1 = phi2
         else:
             warnings.warn(f'Desired precision {tol} not reached with {order} steps. '
-                          f'Error is {np.linalg.norm(tmp)/np.linalg.norm(cheb)}',
+                          f'Error is {numpy.linalg.norm(tmp)/numpy.linalg.norm(cheb)}',
                           AccuracyWarning)
 
-        return cheb * np.exp(-1j*rp)
+        return cheb * numpy.exp(-1j*rp)
     
 def expm(A, v, d=None, bandwidth=None, **kwargs):
     """Apply the Chebyshev approximation of the exponential exp(1i*dt*A)

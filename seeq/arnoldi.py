@@ -81,14 +81,14 @@ class ArnoldiExpm:
                 # Corrected Arnoldi method
                 Hj.resize((j+2,j+2))
                 Hj[j+1,j+1] = 1.0
-                e1 = np.zeros(j+2)
+                e1 = numpy.zeros(j+2)
                 e1[0] = 1.0
                 y = scipy.sparse.linalg.expm_multiply(Hj.tocsr(), e1)
                 err = abs(hlast * y[-1])
                 y = y[:-1]
             else:
                 Hj.resize((j+1,j+1))
-                e1 = np.zeros(j+1)
+                e1 = numpy.zeros(j+1)
                 e1[0] = 1.0
                 y = scipy.sparse.linalg.expm_multiply(Hj.tocsr(), e1)
                 err = abs(hlast * y[-1])
