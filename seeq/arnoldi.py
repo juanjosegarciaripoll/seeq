@@ -26,41 +26,47 @@ class ArnoldiExpm:
         self.Hnorm = abs(sla.eigs(self.H, k=1, which='LM', return_eigenvectors=0)[0])
         return max(int(3*self.Hnorm*dt+1),4)
 
-    def apply(self, v, dt=1.0, order=None, tol=1e-13):
+    def apply(self, v, dt=1.0, order=None, adaptive=False, dtmin=None, tol=1e-12, warning=True):
         """Apply the Arnodi approximation of the exponential exp(-1i*dt*A)
         onto the vector or array `v`.        
         Parameters
         ----------
-        v     -- A vector or a matrix
-        order -- Maximum number of Arnoldi vectors
-        dt    -- time interval in the exponential above (can be complex)
-        tol   -- relative tolerance for deciding when to stop the
-                 Arnoldi expansion
+        v        -- A vector or a matrix
+        order    -- Maximum number of Arnoldi vectors
+        dt       -- time interval in the exponential above (can be complex)
+        tol      -- relative tolerance for deciding when to stop the expansion
+        adaptive -- Reduce time step if errors exceed tolerance
+        dtmin    -- Minimum time interval allowed when adaptive = True
+        warning  -- Emit warning when errors exceed tolerance
         """
-        # This function has two ways to operate: if we provide an order,
-        # it applies the Lanczos expansion up to that basis size; otherwise
-        # it estimates the number of vectors based on the norm of the matrix
-        # that we will exponentiate (which was estimated before in __init__)
         nmax = 12 if order is None else order
+        if dtmin is None:
+            dtmin = dt / 128
         #
-        # Construct a projected version of the matrix 'H' on the
-        # Krylov subspace generated around vector 'v'
-        #
+        # While 'v' could be any tensor, we have to rewrite it in
+        # matrix form because if self.H is a LinearOperator or a
+        # sparse matrix, it only works with objects that have <= 2
+        # indices
         v = numpy.asarray(v)
         shape = v.shape
         if v.ndim > 1:
-            v = v.flatten()
             shape = (shape[0],v.size // shape[0])
-        β = numpy.linalg.norm(v)
-        vn = v / β
-        V = []
-        H = scipy.sparse.dok_matrix((v.size,v.size), dtype=numpy.complex128)
-        lasterr = 0
         start = 0
-        while True:
+        t = dt
+        δt = dt
+        while t > δt/2:
+            if start == 0:
+                β = numpy.linalg.norm(v)
+                vn = v.flatten() / β
+                V = []
+                H = numpy.zeros((nmax+1,nmax+1),dtype=numpy.complex128)
+            else:
+                aux = np.zeros((nmax+1,nmax+1), dtype=H.dtype)
+                aux[numpy.ix_(range(H.shape[0]),range(H.shape[1]))] = H
+                H = aux
             for j in range(start,nmax):
                 V.append(vn)
-                w = (-1j*dt)*numpy.asarray(self.H @ vn.reshape(shape)).flatten()
+                w = (self.H @ vn.reshape(shape)).flatten()
                 for (i,Vi) in enumerate(V):
                     H[i,j] = hij = numpy.vdot(Vi, w)
                     w -= hij * Vi
@@ -76,36 +82,44 @@ class ArnoldiExpm:
             # truncated matrix. This also allows us to estimate the error
             # due to the Lanczos method.
             #
-            Hj = H.copy()
-            if True:
-                # Corrected Arnoldi method
-                Hj.resize((j+2,j+2))
-                Hj[j+1,j+1] = 1.0
-                e1 = numpy.zeros(j+2)
-                e1[0] = 1.0
-                y = scipy.sparse.linalg.expm_multiply(Hj.tocsr(), e1)
-                err = abs(hlast * y[-1])
-                y = y[:-1]
+            # Corrected Arnoldi method
+            H[j+1,j+1] = 1.0
+            e1 = numpy.zeros(j+2)
+            e1[0] = 1.0
+            y = scipy.sparse.linalg.expm_multiply((-1j*δt)*H, e1)
+            err, y = abs(hlast * y[-1]), y[:-1]
+            #
+            if err <= tol:
+                # Error is small, we keep approximation, advance time
+                pass
+            elif (order is not None) and adaptive:
+                # Error is big, try reducing time step
+                while err > tol and δt > dtmin*dt:
+                    δt /= 2
+                    y = scipy.sparse.linalg.expm_multiply((-1j*δt)*H, e1)
+                    err, y = abs(hlast * y[-1]), y[:-1]
+                adaptive = False
+            elif (order is None) and (nmax < v.size):
+                # Try mitigating error by increasing number of Arnoldi
+                # vectors, if feasible.
+                start = nmax
+                nmax = min(int(1.5*nmax+1), v.size)
+                continue
             else:
-                Hj.resize((j+1,j+1))
-                e1 = numpy.zeros(j+1)
-                e1[0] = 1.0
-                y = scipy.sparse.linalg.expm_multiply(Hj.tocsr(), e1)
-                err = abs(hlast * y[-1])
-            if err < tol:
-                break
-            if (nmax == v.size) or (order is not None):
-                warnings.warn(f'Arnoldi failed to converge at {j+1} iterations with error {err}',
-                              AccuracyWarning)
-                lasterr = err
-                break
-            start = nmax
-            nmax = min(int(1.5*nmax+1), v.size)
-        #
-        # Given the approximation of the exponential, recompute the
-        # Lanczos basis 
-        #
-        return sum(Vi * (β * yi) for Vi, yi in zip(V, y)).reshape(v.shape)
+                # We cannot reduce time, and cannot enlarge the number
+                # of vectors, emit a warning if we did not so before
+                if warning:
+                    warnings.warn(f'Arnoldi failed to converge at {j+1} '
+                                  f'iterations with error {err}',
+                                  AccuracyWarning)
+                warning = False
+            #
+            # Compute the new vector and (possibly) start again at an
+            # increased time
+            v = sum(Vi * (β * yi) for Vi, yi in zip(V, y)).reshape(v.shape)
+            start = 0
+            t -= δt
+        return v
     
 def expm(A, v, **kwargs):
     """Apply the Arnoldi approximation of the exponential exp(-1i*dt*A)
